@@ -11,7 +11,7 @@ import java.util.Map;
 /**
  * A representation of a GeoBuf feature.
  */
-public class GeobufFeature {
+public class GeobufFeature implements Cloneable {
     public Geometry geometry;
     public Map<String, Object> properties;
     public String id;
@@ -32,4 +32,22 @@ public class GeobufFeature {
     }
 
     public GeobufFeature () {}
+
+    /** return a copy of this object (also makes a defensive copy of properties, but not of the geometry as the geometry is considered immutable) */
+    public GeobufFeature clone () {
+        GeobufFeature ret;
+        try {
+            ret = (GeobufFeature) super.clone();
+        } catch (CloneNotSupportedException e) {
+            // contact spock immediately
+            throw new RuntimeException(e);
+        }
+
+        ret.properties = new HashMap<>();
+        ret.properties.putAll(this.properties);
+
+        // no need to clone geometry as it's immutable
+
+        return ret;
+    }
 }
