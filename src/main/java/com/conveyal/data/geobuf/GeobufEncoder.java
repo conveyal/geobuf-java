@@ -102,11 +102,15 @@ public class GeobufEncoder {
             feat.addProperties(keyIdx);
             feat.addProperties(feat.getValuesCount());
             feat.addValues(val);
+        }
 
-            if (feature.id != null)
-                feat.setId(feature.id);
-            else
-                feat.setIntId(feature.numericId);
+        if (feature.id != null) {
+            feat.setId(feature.id);
+            feat.clearIntId();
+        }
+        else {
+            feat.setIntId(feature.numericId);
+            feat.clearId();
         }
 
         return feat.build();
@@ -168,14 +172,16 @@ public class GeobufEncoder {
 
     /** Add a ring to a builder */
     private void addRing(LineString r, Geobuf.Data.Geometry.Builder builder) {
-        // TODO: remove last point?
-        builder.addLengths(r.getNumPoints());
+        // skip last point, same as first
+        builder.addLengths(r.getNumPoints() - 1);
 
         long x, y, prevX = 0, prevY = 0;
 
-        for (int i = 0; i < r.getNumPoints(); i++) {
+        // last point is same as first, skip
+        for (int i = 0; i < r.getNumPoints() - 1; i++) {
             // delta code
             Coordinate coord = r.getCoordinateN(i);
+            // note that roundoff errors do not accumulate
             x = (long) (coord.x * precisionMultiplier);
             y = (long) (coord.y * precisionMultiplier);
             builder.addCoords(x - prevX);
