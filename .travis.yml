@@ -1,0 +1,26 @@
+language: java
+
+# Geobuf requires Java 8 (OpenJDK 8 is not available on travis)
+jdk:
+  - oraclejdk8
+
+# encrypted AWS access/secret keys to allow automated deployment to conveyal maven repo
+env:
+  global:
+    # encrypted AWS access/secret keys to allow automated deployment to conveyal maven repo
+    - secure: "i7Mb9P0qCRQuUWDc2B+N1k/RbK18yFZBH5EQLgZ/vRUQS8uqFKCsn2EGNxQ+Qu9AN0bcl9fubR3bZJgGyaDynYblkrvhgJenw7jAo6d22877VFQgoLudsaFlSUyI9S+hFVLkslBr+I/piyq/QKcRuor7dMn+12pG99EUc0wtLsFaprEMdmxR2E55O2XVnNlZiTfQ529oKwMnBv6RqtI/oaiiVleuIlq2bU/s41LeLd9nHeeV9RuQfCJgnJRHYem5S+UzDbBaaPazDOlCt4w6e5+vxR3TqpcoOJ1k4KrBc3eP+KPPKJWGWtVKqw6M2VRcSLsBXTVupzXq2Cl743hgMTb6lel+vk8TA2O/pu8Vbs//KooytTtiOsSJqDwkxQiLjEzcaNYBe+761TZMiMks6VkItNCyJceXXEuYp7csUUWODUL3ZvW4sPkKzeVG1M6eNrbB8q1Nn/GdSmKam5ttEDiLL1P0v/WzoCmrVElW7fA2Nyv5UlRp1t7zRxxUeLLMSSjbub2trAOgL7w3uYp5WYaE/MwcEPcF8y9lSZMqncn0JaHGoYIOo4EaiZGFBXXy36iFOKxxGgt3kBG44a5X0O6aVUF/V3SdxGW+q0Vr7LM7L/p04k3JfyQUUKVvZABerpuftHfuy4d9eD1Grcw1mzTb4MRs/CzC08W3S1jgydw="
+    - secure: "IkM/UC7oEvAMFYVMVHT9xcQj9aqbkVsKYi9BlfyP8c8O1cnIJkPUzEpP9+goIwmUbzszSQbuAcG8I+gPmEu8sObBiaqFoMOB7zZguenL8t4BHJfZmznq/x/5iJMgniIYdwFYIU1LMf6/hk5u2L7xyLl0BbTg2lrBcUfLFOE5qpjq0Yna6ZgiiSNxM1BCcQbKWH27zIhHEUW53qmwspAMf6VXqdlwTWvSqxTBjB0GFOlB7E67kLVAEMEdJuxJmmlEso9d3E5H5YjLc4JfjYhmFT3X43xMHcVpRi0QmI44xakmUtHch0OdNWfmuNy1S+c4Vit+nQPUPDhPMVzl8aIo7NqE9iuz9gFMeJ8JBbjLHv6k0Z0xw7lRmW5PdOToJnePb4u3GA9wofMTzJZOYs3Mr/ur1ivMsCRZTgi9Wd5IVQQUVapR3N/5LpNZd3atx3qkgkWmkDw5bwR0esfzSH9fCOWaoLwNHfHTOyXjvqwCJO8XqsUhgQlrqMP7S/QNTv7PWOvw1kYoj4Fy3tewxdnCqWRps2V7ggMhCBJe+4p+V6hgKCu+sJ47qBdgxuxcdFqFfX2nEwap8UxoYQXSFSw/0imKXtY+BVyly0bjLIoIeLMk4GtWV/o1oD/i04k5ySfrPHtkPGLVwT8bIrPX1oQMgeJjFxTqaupF6GdAsXyHQjk="
+# Run on container based infrastructure (allows caching &c.)
+sudo: false
+
+# deploy maven artifacts from master iff it's not a pull request
+after_success: |
+  if [ "$TRAVIS_BRANCH" = "master" ] && [ "$TRAVIS_PULL_REQUEST" = "false" ]; then
+    # no need to run tests again
+    mvn deploy --settings settings.xml -DskipTests
+  fi
+
+# Save the maven cache to speed up builds
+cache:
+  directories:
+    - "$HOME/.m2/repository"
