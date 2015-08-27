@@ -78,6 +78,12 @@
         <artifactId>aws-maven</artifactId>
         <version>5.0.0.RELEASE</version>
       </extension>
+      <extension>
+        <groupId>org.kuali.maven.wagons</groupId>
+        <artifactId>maven-s3-wagon</artifactId>
+        <version>1.2.1</version>
+      </extension>
+
     </extensions>
     </build>
 
