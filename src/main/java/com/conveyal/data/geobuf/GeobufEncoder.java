@@ -22,12 +22,12 @@ public class GeobufEncoder {
     public final int precision;
 
     /** What to multiply floating point values by to get desired precision */
-    public final int precisionMultiplier;
+    public final long precisionMultiplier;
 
     public GeobufEncoder(OutputStream outputStream, int precision) {
         this.outputStream = outputStream;
         this.precision = precision;
-        this.precisionMultiplier = (int) Math.pow(10, precision);
+        this.precisionMultiplier = (long) Math.pow(10, precision);
     }
 
     public void writeFeatureCollection (Collection<GeobufFeature> featureCollection) throws IOException {
@@ -130,8 +130,8 @@ public class GeobufEncoder {
     public Geobuf.Data.Geometry pointToGeobuf(Point point) {
         return Geobuf.Data.Geometry.newBuilder()
                 .setType(Geobuf.Data.Geometry.Type.POINT)
-                .addCoords((long) point.getX() * precisionMultiplier)
-                .addCoords((long) point.getY() * precisionMultiplier)
+                .addCoords((long) (point.getX() * precisionMultiplier))
+                .addCoords((long) (point.getY() * precisionMultiplier))
                 .build();
     }
 
