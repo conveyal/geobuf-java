@@ -2,11 +2,11 @@ package com.conveyal.data.geobuf;
 
 import com.vividsolutions.jts.geom.*;
 import geobuf.Geobuf;
+import org.mapdb.Serializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
-import java.io.OutputStream;
+import java.io.*;
 import java.util.*;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
@@ -31,6 +31,10 @@ public class GeobufEncoder {
     }
 
     public void writeFeatureCollection (Collection<GeobufFeature> featureCollection) throws IOException {
+        outputStream.write(makeFeatureCollection(featureCollection).toByteArray());
+    }
+
+    public Geobuf.Data makeFeatureCollection (Collection<GeobufFeature> featureCollection) {
         Geobuf.Data.Builder data = Geobuf.Data.newBuilder()
                 .setPrecision(this.precision)
                 // TODO don't hardwire
@@ -51,7 +55,7 @@ public class GeobufEncoder {
         data.setFeatureCollection(fc);
         data.addAllKeys(keys);
 
-        outputStream.write(data.build().toByteArray());
+        return data.build();
     }
 
     private Geobuf.Data.Feature makeFeature (GeobufFeature feature, List<String> keys) {
@@ -193,5 +197,49 @@ public class GeobufEncoder {
 
     public void close () throws IOException {
         outputStream.close();
+    }
+
+    public static class GeobufFeatureSerializer extends Serializer<GeobufFeature> implements Serializable {
+        public final int precision;
+
+        private transient GeobufEncoder encoder;
+
+        public GeobufFeatureSerializer (int precision) {
+            this.precision = precision;
+        }
+
+        @Override
+        public void serialize(DataOutput dataOutput, GeobufFeature geobufFeature) throws IOException {
+            GeobufEncoder enc = getEncoder();
+            // This could be more efficient, we're wrapping a single feature in a feature collection. But that way the key/value
+            // serialization all works.
+            Geobuf.Data feat = enc.makeFeatureCollection(Arrays.asList(geobufFeature));
+            byte[] data = feat.toByteArray();
+            dataOutput.writeInt(data.length);
+            dataOutput.write(data);
+        }
+
+        @Override
+        public GeobufFeature deserialize(DataInput dataInput, int i) throws IOException {
+            int len = dataInput.readInt();
+            byte[] feat = new byte[len];
+            dataInput.readFully(feat);
+            Geobuf.Data data = Geobuf.Data.parseFrom(feat);
+
+            return new GeobufFeature(data.getFeatureCollection().getFeatures(0), data.getKeysList(), Math.pow(10, data.getPrecision()));
+        }
+
+        /** get the geobuf encoder, lazy initializing if needed. JVM should inline this function */
+        private GeobufEncoder getEncoder () {
+            if (encoder == null) {
+                synchronized (this) {
+                    if (encoder == null) {
+                        encoder = new GeobufEncoder(new ByteArrayOutputStream(), precision);
+                    }
+                }
+            }
+
+            return encoder;
+        }
     }
 }
