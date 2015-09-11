@@ -8,6 +8,7 @@ import org.opengis.feature.simple.SimpleFeature;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.Serializable;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -15,7 +16,9 @@ import java.util.Map;
 /**
  * A representation of a GeoBuf feature.
  */
-public class GeobufFeature implements Cloneable {
+public class GeobufFeature implements Cloneable, Serializable {
+    private static final long serialVersionUID = 1L;
+
     private static final Logger LOG = LoggerFactory.getLogger(GeobufFeature.class);
 
     public Geometry geometry;
