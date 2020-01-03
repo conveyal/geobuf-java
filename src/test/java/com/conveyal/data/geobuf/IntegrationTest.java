@@ -1,8 +1,8 @@
 package com.conveyal.data.geobuf;
 
-import com.vividsolutions.jts.geom.*;
-import com.vividsolutions.jts.io.WKTReader;
-import com.vividsolutions.jts.io.WKTWriter;
+import org.locationtech.jts.geom.*;
+import org.locationtech.jts.io.WKTReader;
+import org.locationtech.jts.io.WKTWriter;
 import junit.framework.TestCase;
 import org.junit.Test;
 

@@ -1,21 +1,17 @@
 package com.conveyal.data.geobuf;
 
 import com.google.common.io.Files;
-import com.vividsolutions.jts.geom.Coordinate;
-import com.vividsolutions.jts.geom.Geometry;
-import com.vividsolutions.jts.geom.GeometryFactory;
-import com.vividsolutions.jts.geom.Polygon;
-import com.vividsolutions.jts.io.WKTReader;
+import org.locationtech.jts.geom.Coordinate;
+import org.locationtech.jts.geom.Geometry;
+import org.locationtech.jts.geom.GeometryFactory;
+import org.locationtech.jts.geom.Polygon;
+import org.locationtech.jts.io.WKTReader;
 import junit.framework.TestCase;
 import org.junit.Test;
 import org.mapdb.DB;
 import org.mapdb.DBMaker;
-import sun.management.FileSystem;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.File;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 

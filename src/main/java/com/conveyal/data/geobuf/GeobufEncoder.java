@@ -1,6 +1,6 @@
 package com.conveyal.data.geobuf;
 
-import com.vividsolutions.jts.geom.*;
+import org.locationtech.jts.geom.*;
 import geobuf.Geobuf;
 import org.mapdb.Serializer;
 import org.slf4j.Logger;
