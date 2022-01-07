@@ -123,6 +123,12 @@ public class GeobufEncoder {
     public Geobuf.Data.Geometry geomToGeobuf (Geometry geometry) {
         if (geometry instanceof Point)
             return pointToGeobuf((Point) geometry);
+        else if (geometry instanceof MultiPoint)
+            return multiPointToGeobuf((MultiPoint) geometry);
+        else if (geometry instanceof LineString)
+            return lineStringToGeobuf((LineString) geometry);
+        else if (geometry instanceof MultiLineString)
+            return multiLineStringToGeobuf((MultiLineString) geometry);
         else if (geometry instanceof Polygon)
             return polyToGeobuf((Polygon) geometry);
         else if (geometry instanceof MultiPolygon)
@@ -132,11 +138,78 @@ public class GeobufEncoder {
     }
 
     public Geobuf.Data.Geometry pointToGeobuf(Point point) {
-        return Geobuf.Data.Geometry.newBuilder()
-                .setType(Geobuf.Data.Geometry.Type.POINT)
+        return Geobuf.Data.Geometry.newBuilder().setType(Geobuf.Data.Geometry.Type.POINT)
                 .addCoords((long) (point.getX() * precisionMultiplier))
                 .addCoords((long) (point.getY() * precisionMultiplier))
                 .build();
+    }
+
+    public Geobuf.Data.Geometry multiPointToGeobuf(MultiPoint point) {
+        Geobuf.Data.Geometry.Builder builder = Geobuf.Data.Geometry.newBuilder()
+                .setType(Geobuf.Data.Geometry.Type.MULTIPOINT);
+
+        builder.addLengths(point.getNumPoints());
+
+        for (int i = 0; i < point.getNumGeometries(); i++) {
+            Point p = (Point) point.getGeometryN(i);
+
+            builder.addCoords((long) (p.getX() * precisionMultiplier));
+            builder.addCoords((long) (p.getY() * precisionMultiplier));
+        }
+
+        return builder.build();
+    }
+
+    public Geobuf.Data.Geometry lineStringToGeobuf (LineString line) {
+        Geobuf.Data.Geometry.Builder builder = Geobuf.Data.Geometry.newBuilder()
+                .setType(Geobuf.Data.Geometry.Type.LINESTRING);
+
+        addLine(line, builder);
+
+        return builder.build();
+    }
+
+    public Geobuf.Data.Geometry multiLineStringToGeobuf (MultiLineString line) {
+        Geobuf.Data.Geometry.Builder builder = Geobuf.Data.Geometry.newBuilder()
+                .setType(Geobuf.Data.Geometry.Type.MULTILINESTRING);
+
+        for (int i = 0; i < line.getNumGeometries(); i++) {
+            LineString l = (LineString) line.getGeometryN(i);
+            addLine(l, builder);
+        }
+
+        return builder.build();
+    }
+
+    private void addLine(LineString r, Geobuf.Data.Geometry.Builder builder) {
+        builder.addLengths(r.getNumPoints());
+
+        long x, y, prevX = 0, prevY = 0;
+
+        for (int i = 0; i < r.getNumPoints(); i++) {
+            // delta code
+            Coordinate coord = r.getCoordinateN(i);
+            // note that roundoff errors do not accumulate
+            x = (long) (coord.x * precisionMultiplier);
+            y = (long) (coord.y * precisionMultiplier);
+            builder.addCoords(x - prevX);
+            builder.addCoords(y - prevY);
+            prevX = x;
+            prevY = y;
+        }
+    }
+
+    public Geobuf.Data.Geometry polyToGeobuf (Polygon poly) {
+        Geobuf.Data.Geometry.Builder builder = Geobuf.Data.Geometry.newBuilder()
+                .setType(Geobuf.Data.Geometry.Type.POLYGON);
+
+        Stream<LineString> interiorRings = IntStream.range(0, poly.getNumInteriorRing())
+                .mapToObj(poly::getInteriorRingN);
+
+        Stream.concat(Stream.of(poly.getExteriorRing()), interiorRings)
+                .forEach(r -> addRing(r, builder));
+
+        return builder.build();
     }
 
     public Geobuf.Data.Geometry multiPolyToGeobuf (MultiPolygon poly) {
@@ -157,19 +230,6 @@ public class GeobufEncoder {
             Stream.concat(Stream.of(p.getExteriorRing()), interiorRings)
                     .forEach(r -> addRing(r, builder));
         }
-
-        return builder.build();
-    }
-
-    public Geobuf.Data.Geometry polyToGeobuf (Polygon poly) {
-        Geobuf.Data.Geometry.Builder builder = Geobuf.Data.Geometry.newBuilder()
-                .setType(Geobuf.Data.Geometry.Type.POLYGON);
-
-        Stream<LineString> interiorRings = IntStream.range(0, poly.getNumInteriorRing())
-                .mapToObj(poly::getInteriorRingN);
-
-        Stream.concat(Stream.of(poly.getExteriorRing()), interiorRings)
-                .forEach(r -> addRing(r, builder));
 
         return builder.build();
     }
