@@ -71,7 +71,17 @@ public class GeobufFeature implements Cloneable, Serializable {
         // parse geometry
         Geobuf.Data.Geometry gbgeom = feature.getGeometry();
 
-        if (Geobuf.Data.Geometry.Type.MULTIPOLYGON.equals(gbgeom.getType()))
+        if (Geobuf.Data.Geometry.Type.POINT.equals(gbgeom.getType()))
+            this.geometry = decodePoint(gbgeom, precisionDivisor);
+        else if (Geobuf.Data.Geometry.Type.MULTIPOINT.equals(gbgeom.getType()))
+            this.geometry = decodeMultiPoint(gbgeom, precisionDivisor);
+        else if (Geobuf.Data.Geometry.Type.LINESTRING.equals(gbgeom.getType()))
+            this.geometry = decodeLineString(gbgeom, precisionDivisor);
+        else if (Geobuf.Data.Geometry.Type.MULTILINESTRING.equals(gbgeom.getType()))
+            this.geometry = decodeMultiLineString(gbgeom, precisionDivisor);
+        else if (Geobuf.Data.Geometry.Type.POLYGON.equals(gbgeom.getType()))
+            this.geometry = decodePolygon(gbgeom, precisionDivisor);
+        else if (Geobuf.Data.Geometry.Type.MULTIPOLYGON.equals(gbgeom.getType()))
             this.geometry = decodeMultipolygon(gbgeom, precisionDivisor);
         else
             LOG.warn("Unsupported geometry type {}", gbgeom.getType());
@@ -81,6 +91,159 @@ public class GeobufFeature implements Cloneable, Serializable {
             this.numericId = feature.getIntId();
         else
             this.id = feature.getId();
+    }
+
+    private Geometry decodePoint(Geobuf.Data.Geometry gbgeom, double precisionDivisor) {
+        return geometryFactory.createPoint(new Coordinate(gbgeom.getCoords(0) / precisionDivisor, gbgeom.getCoords(1) / precisionDivisor));
+    }
+
+    private Geometry decodeMultiPoint(Geobuf.Data.Geometry gbgeom, double precisionDivisor) {
+        int npoint = gbgeom.getLengthsCount();
+
+        Point[] points = new Point[npoint];
+        int coordGlobalIdx = 0;
+
+        if (npoint < 1) {
+            points = new Point[1];
+
+            long x = gbgeom.getCoords(coordGlobalIdx++);
+            long y = gbgeom.getCoords(coordGlobalIdx++);
+
+            points[0] = geometryFactory.createPoint(new Coordinate(x / precisionDivisor, y / precisionDivisor));
+
+        } else {
+            npoint = gbgeom.getLengths(0);
+            points = new Point[npoint];
+            for (int point = 0; point < npoint; point++) {
+
+                long x = gbgeom.getCoords(coordGlobalIdx++);
+                long y = gbgeom.getCoords(coordGlobalIdx++);
+
+                points[point] = geometryFactory.createPoint(new Coordinate(x / precisionDivisor, y / precisionDivisor));
+            }
+        }
+        return geometryFactory.createMultiPoint(points);
+    }
+
+    private Geometry decodeLineString(Geobuf.Data.Geometry gbgeom, double precisionDivisor) {
+        int ncoord = gbgeom.getCoordsCount() / 2;
+        if (ncoord < 2) {
+            LOG.error("Geometry cannot be empty!");
+            return geometryFactory.createLineString();
+        }
+        else {
+            Coordinate[] coords = new Coordinate[ncoord];
+
+            long prevx = 0, prevy = 0;
+            int coordGlobalIdx = 0;
+
+            for (int coordIdx = 0; coordIdx < ncoord; coordIdx++) {
+                long x = gbgeom.getCoords(coordGlobalIdx++) + prevx;
+                long y = gbgeom.getCoords(coordGlobalIdx++) + prevy;
+
+                coords[coordIdx] = new Coordinate(x / precisionDivisor, y / precisionDivisor);
+
+                prevx = x;
+                prevy = y;
+            }
+            return geometryFactory.createLineString(coords);
+        }
+    }
+
+    private Geometry decodeMultiLineString(Geobuf.Data.Geometry gbgeom, double precisionDivisor) {
+        int nline = gbgeom.getLengthsCount();
+
+        LineString[] lines = new LineString[nline];
+        int coordGlobalIdx = 0;
+
+        if (nline < 1) {
+            lines = new LineString[1];
+            int ncoord = gbgeom.getCoordsCount() / 2;
+            if (ncoord < 1) {
+                LOG.error("Geometry cannot be empty!");
+            }
+            else {
+                Coordinate[] coords = new Coordinate[ncoord];
+
+                long prevx = 0, prevy = 0;
+
+                for (int coordIdx = 0; coordIdx < ncoord; coordIdx++) {
+                    long x = gbgeom.getCoords(coordGlobalIdx++) + prevx;
+                    long y = gbgeom.getCoords(coordGlobalIdx++) + prevy;
+
+                    coords[coordIdx] = new Coordinate(x / precisionDivisor, y / precisionDivisor);
+
+                    prevx = x;
+                    prevy = y;
+                }
+                lines[0] = geometryFactory.createLineString(coords);
+            }
+        } else {
+            for (int line = 0; line < nline; line++) {
+                int ncoord = gbgeom.getLengths(line);
+                Coordinate[] coords = new Coordinate[ncoord];
+
+                long prevx = 0, prevy = 0;
+
+                for (int coordIdx = 0; coordIdx < ncoord; coordIdx++) {
+                    long x = gbgeom.getCoords(coordGlobalIdx++) + prevx;
+                    long y = gbgeom.getCoords(coordGlobalIdx++) + prevy;
+
+                    coords[coordIdx] = new Coordinate(x / precisionDivisor, y / precisionDivisor);
+
+                    prevx = x;
+                    prevy = y;
+                }
+
+                lines[line] = geometryFactory.createLineString(coords);
+            }
+        }
+        return geometryFactory.createMultiLineString(lines);
+    }
+
+    private Geometry decodePolygon(Geobuf.Data.Geometry gbgeom, double precisionDivisor) {
+        int coordGlobalIdx = 0;
+        int nring = gbgeom.getLengthsCount();
+
+        LinearRing shell = null;
+        LinearRing[] holes = null;
+
+        if (nring != 0) {
+            holes = new LinearRing[nring - 1];
+        } else
+            nring ++;
+
+        for (int ring = 0; ring < nring; ring++) {
+            int ncoord = gbgeom.getCoordsCount() / 2;
+            if (nring != 1) {
+                ncoord = gbgeom.getLengths(ring);
+            }
+
+            Coordinate[] coords = new Coordinate[ncoord + 1];
+
+            long prevx = 0, prevy = 0;
+
+            for (int coordRingIdx = 0; coordRingIdx < ncoord; coordRingIdx++) {
+                long x = gbgeom.getCoords(coordGlobalIdx++) + prevx;
+                long y = gbgeom.getCoords(coordGlobalIdx++) + prevy;
+
+                coords[coordRingIdx] = new Coordinate(x / precisionDivisor, y / precisionDivisor);
+
+                prevx = x;
+                prevy = y;
+            }
+
+            coords[ncoord] = coords[0];
+
+            LinearRing theRing = geometryFactory.createLinearRing(coords);
+
+            if (ring == 0)
+                shell = theRing;
+            else
+                holes[ring - 1] = theRing;
+        }
+
+        return geometryFactory.createPolygon(shell, holes);
     }
 
     private Geometry decodeMultipolygon(Geobuf.Data.Geometry gbgeom, double precisionDivisor) {
